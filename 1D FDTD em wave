@@ -1,0 +1,65 @@
+import matplotlib.pyplot as plt 
+import numpy as np 
+
+#define constants
+eps0 = 8.8541878e-12
+mu0 = 1.25663e-6
+c0 = 1/np.sqrt(eps0*mu0)
+imp0 = np.sqrt(mu0/eps0)
+
+jmax = 500
+nmax = 2000
+jsource = 100
+
+Ex = np.zeros(jmax)
+Hz = np.zeros(jmax)
+
+Ex_prev = np.zeros(jmax)
+Hz_prev = np.zeros(jmax)
+
+lambda_min = 350e-9 #meter
+dx = lambda_min/20
+dt = dx/c0
+
+
+eps = eps0
+
+def Source_function(t):
+    lambda_0 = 550e-9
+    w0 = 2*np.pi*c0/lambda_0
+    tau = 300
+    t0 = tau * 3
+        
+    return np.exp(-(t-t0)**2/tau**2)*np.sin(w0*t*dt)
+     
+
+for n in range(nmax):
+    #update magnetic field boundaries
+    Hz[jmax-1] = Hz_prev[jmax - 2]
+    #update magnetic field
+    for j in range(jmax-1): 
+        Hz[j] = Hz_prev[j] + dt/(mu0*dx) * (Ex[j+1] - Ex[j])
+        Hz_prev[j] = Hz[j]
+      
+    #magnetic field source
+    
+    
+    
+       #update electric field boundaries
+    Ex[0] = Ex_prev[1]
+    
+    for j in range(1,jmax):
+        Ex[j] = Ex_prev[j] + dt/(dx*eps) * (Hz[j] - Hz[j-1])
+        Ex_prev[j] = Ex[j]
+    #electric field source
+    Ex[jsource] += Source_function(n+1)
+    Ex_prev[jsource] = Ex[jsource]
+    
+    
+    if n%10 == 0:
+        plt.plot(Ex)
+        plt.ylim([-1,1])
+        plt.show()
+        plt.close()
+        
+    
