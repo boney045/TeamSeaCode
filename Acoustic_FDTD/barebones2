@@ -1,0 +1,115 @@
+//
+//  barebones.swift
+//  Acoustic_FDTD
+//
+//  Created by Jake Mcilvaney on 23/11/2022.
+//
+// To analyse results, copy printed values into excel and create a scatter plot.
+
+import Foundation
+// Defining constants
+let c0 = 343.0 // speed of sound in m/s
+let cr = 1.0 // relative speed of sound, assuming perfect conditions
+let SIZE = 50 // size of each array
+let delta_t = 1.0 // time step
+let delta = 1.0 // spatial step
+let rho = 997.0 // density of water in kg/m^3
+let Sc = (c0*delta_t)/delta // Courant number
+
+//function to initialise a 2D array (matrix) of 0.0 of size sizeX by sizeY
+func init2DArray(sizeX: Int, sizeY: Int) -> Array<Array<Double>>{
+    var temp2DArray = [[Double]]()
+    var tempNNArray = [Double]()
+    for _ in stride(from: 0, to: sizeX, by: 1){
+        for _ in stride(from: 0, to: sizeY, by: 1){
+            tempNNArray.append(0.0)
+        }
+        temp2DArray.append(tempNNArray)
+    }
+    return temp2DArray
+}
+
+var temporalStride = 1.0
+var startTime = 0.0
+
+let startNodeX = 0
+let endNodeX = SIZE
+let spatialStrideX = 1
+
+let startNodeY = 0
+let endNodeY = SIZE
+let spatialStrideY = 1
+    
+var snapshots = [[[Double]]]()
+
+func Acoustic_bareBones2D(){
+    // initialise arrays
+    var Pr = init2DArray(sizeX: SIZE, sizeY: SIZE)
+    var vx = init2DArray(sizeX: SIZE, sizeY: SIZE)
+    var vy = init2DArray(sizeX: SIZE, sizeY: SIZE)
+    // simulation ends at maxTime
+    let maxTime = 30.0
+    // time stepping
+    for qTime in stride(from: 0.0, to: maxTime, by: delta_t){
+        // update velocity in x-axis with embedded for loops
+        for mm in stride(from: 0, to: SIZE-1, by: 1){
+            for nn in stride(from: 0, to: SIZE-1, by: 1){
+                vx[mm][nn] = vx[mm][nn] - (Pr[mm+1][nn] - Pr[mm][nn])*(Sc/(rho*c0))
+            }
+        }
+        // update velocity in y-axis
+        for mm in stride(from: 0, to: SIZE-1, by: 1){
+            for nn in stride(from: 0, to: SIZE-1, by: 1){
+                vy[mm][nn] = vy[mm][nn] - (Pr[mm][nn+1] - Pr[mm][nn])*(Sc/(rho*c0))
+            }
+        }
+        // update pressure field
+        for mm in stride(from: 1, to: SIZE, by: 1){
+            for nn in stride(from: 1, to: SIZE, by: 1){
+                Pr[mm][nn] = Pr[mm][nn] - (vx[mm][nn] - vx[mm-1][nn] + vy[mm][nn] - vy[mm][nn-1])*rho*pow(cr,2)*Sc
+            }
+        }
+        //hardwire a source node
+        Pr[5][5] = 5.0*exp(-(qTime-30.0)*(qTime-30.0)/100)
+        vx[5][5]
+        //print(vx[0][0]) // check change in velocity over time at source node
+        //print(Pr[0][0]) // check form of source node in time
+    
+
+        if (Int(qTime) % Int(temporalStride) == 0) {
+            var snap: [[Double]] = [[]]
+            snap.removeAll()
+            
+            var i = 0
+            
+            for nn in stride(from: endNodeY-1, through: startNodeY, by: -spatialStrideY) {
+                snap.append([])
+                for mm in stride(from: startNodeX, through: endNodeX-1, by: spatialStrideX) {
+                        snap[i].append(Pr[mm][nn])
+                }
+                i = i+1
+            }
+            snapshots.append(snap)
+        }
+        
+    }
+}
+
+
+Acoustic_bareBones2D()
+
+
+
+
+var outputText = String()
+for (index, elements) in snapshots.enumerated() {
+    outputText.append("Index: \(index) /Time: \(index  * Int(temporalStride + startTime))\n")
+    for (_, xvalues) in elements.enumerated() {
+        for (_, values) in xvalues.enumerated() {
+            outputText.append("\(values), ")
+        }
+        outputText.append("\n")
+    }
+    outputText.append("\n\n")
+}
+print(outputText)
